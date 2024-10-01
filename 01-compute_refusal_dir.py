@@ -1,28 +1,23 @@
-import jaxtyping
-
 import random
-
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, TextStreamer, BitsAndBytesConfig
 
-import einops
-
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 
 torch.inference_mode()
 
 torch.set_default_device("cuda")
 
-MODEL_ID = "Qwen/Qwen2-1.5B-Instruct"
-# MODEL_ID = "Qwen/Qwen2-1.5B-Instruct-Abliterated_v1"
+model_name = "Qwen2.5-0.5B-Instruct"  # 模型名称
+modle_path = "/mnt/s/worklib/llm/models-st/Qwen/" + model_name  # 模型路径
 
 model = AutoModelForCausalLM.from_pretrained(
-    MODEL_ID,
+    modle_path,
     trust_remote_code=True,
     device_map="auto",
     torch_dtype=torch.bfloat16
 )
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained(modle_path, trust_remote_code=True)
 
 instructions = 1000
 layer_idx = int(len(model.model.layers) * 0.6)
@@ -77,4 +72,4 @@ refusal_dir = refusal_dir / refusal_dir.norm()
 
 print(refusal_dir)
 
-torch.save(refusal_dir, MODEL_ID.replace("/", "_") + "_refusal_dir.pt")
+torch.save(refusal_dir, model_name.replace("/", "_") + "_refusal_dir.pt")

@@ -15,11 +15,12 @@ max_seq_length = 2048
 dtype = None
 load_in_4bit = False
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+# 检查是否有多个GPU可用
+device_ids = list(range(torch.cuda.device_count()))
 
 # 加载预训练模型和tokenizer
 model_name = "Qwen2-1.5B-Instruct-Abliterated_v1"  # 模型名称
-modle_path = "Qwen/" + model_name  # 模型路径
+modle_path = "/mnt/s/worklib/llm/models-st/Qwen/" + model_name  # 模型路径
 dataset_name = "yuwangdianti"  # 数据集名称
 dataset_file = "/mnt/s/worklib/llm/tools/llama3-txt2json-dataset-maker/novel/" + dataset_name + "/dataset.json"  # 数据文件路径
 
@@ -29,8 +30,12 @@ trained_model_name = "adapter_model/" + f"{model_name}_{dataset_name}".replace(
 
 os.makedirs(trained_model_name, exist_ok=True)
 
-model = AutoModelForCausalLM.from_pretrained(modle_path).to(device)
+model = AutoModelForCausalLM.from_pretrained(modle_path)
 tokenizer = AutoTokenizer.from_pretrained(modle_path)
+
+if len(device_ids) > 1:
+    model = torch.nn.DataParallel(model, device_ids=device_ids)
+    model.to(device_ids[0])
 
 # 加载和预处理数据集
 custom_dataset = LocalJsonDataset(json_file=dataset_file, tokenizer=tokenizer, max_seq_length=max_seq_length)

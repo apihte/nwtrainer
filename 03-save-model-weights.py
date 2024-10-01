@@ -4,18 +4,18 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 torch.set_default_device("cuda")
 
-MODEL_ID = "Qwen/Qwen2-1.5B-Instruct"
-# MODEL_ID = "Qwen/Qwen2-1.5B-Instruct-Abliterated_v1"
+model_name = "Qwen2.5-0.5B-Instruct"  # 模型名称
+modle_path = "/mnt/s/worklib/llm/models-st/Qwen/" + model_name  # 模型路径
 
 SKIP_BEGIN_LAYERS = 1
 SKIP_END_LAYERS = 0
 SCALE_FACTOR = 1.0
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained(modle_path, trust_remote_code=True)
 
 # Reload the model in CPU memory with bfloat16 data type
 model = AutoModelForCausalLM.from_pretrained(
-    MODEL_ID,
+    modle_path,
     trust_remote_code=True,
     device_map='auto',
     torch_dtype=torch.bfloat16
@@ -23,7 +23,7 @@ model = AutoModelForCausalLM.from_pretrained(
 model.requires_grad_(False)
 
 # Load your pre-computed direction tensor
-refusal_dir = torch.load(MODEL_ID.replace("/", "_") + "_refusal_dir.pt", weights_only=True)
+refusal_dir = torch.load(model_name.replace("/", "_") + "_refusal_dir.pt", weights_only=True)
 refusal_dir = refusal_dir.to(model.device)
 
 # Get the language model component and check it's as expected.
@@ -73,8 +73,8 @@ def modify_tensor(tensor_data, refusal_dir, scale_factor: float = 1.0):
     refusal_shape = refusal_float32.shape
     tensor_shape = tensor_float32.shape
 
-    print("before refusal_shape = ", refusal_float32.shape)
-    print("before tensor_shape = ", tensor_float32.shape)
+    print("before refusal_shape = ", refusal_shape)
+    print("before tensor_shape = ", tensor_shape)
 
     # if refusal_shape[1] != tensor_shape[0] or refusal_shape[0] != tensor_shape[1]:
     #     row = max(refusal_shape[0], tensor_shape[1])

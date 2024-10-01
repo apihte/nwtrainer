@@ -10,41 +10,41 @@ torch.inference_mode()
 
 torch.set_default_device("cuda")
 
-# MODEL_ID = "Qwen/Qwen2-1.5B-Instruct"
-MODEL_ID = "Qwen/Qwen2-1.5B-Instruct-Abliterated_v1"
+model_name = "Qwen2.5-0.5B-Instruct"  # 模型名称
+modle_path = "/mnt/s/worklib/llm/models-st/Qwen/" + model_name  # 模型路径
 
 model = AutoModelForCausalLM.from_pretrained(
-    MODEL_ID,
+    modle_path,
     trust_remote_code=True,
     device_map="auto",
     torch_dtype=torch.bfloat16
 )
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained(modle_path, trust_remote_code=True)
 
-# refusal_dir = torch.load(MODEL_ID.replace("/", "_") + "_refusal_dir.pt")
-# refusal_dir = refusal_dir.to(torch.bfloat16)
-
-
-# def direction_ablation_hook(activation: jaxtyping.Float[torch.Tensor, "... d_act"],
-#                             direction: jaxtyping.Float[torch.Tensor, "d_act"]):
-#     proj = einops.einsum(activation, direction.view(-1, 1), '... d_act, d_act single -> ... single') * direction
-#     return activation - proj
+refusal_dir = torch.load(model_name.replace("/", "_") + "_refusal_dir.pt")
+refusal_dir = refusal_dir.to(torch.bfloat16)
 
 
-# class AblationDecoderLayer(nn.Module):
-#     def __init__(self, original_layer):
-#         super(AblationDecoderLayer, self).__init__()
-#         self.original_layer = original_layer
-
-#     def forward(self, *args, **kwargs):
-#         hidden_states = args[0]
-#         ablated = direction_ablation_hook(hidden_states, refusal_dir.to(hidden_states.device)).to(hidden_states.device)
-#         args = (ablated,) + args[1:]
-#         return self.original_layer.forward(*args, **kwargs)
+def direction_ablation_hook(activation: jaxtyping.Float[torch.Tensor, "... d_act"],
+                            direction: jaxtyping.Float[torch.Tensor, "d_act"]):
+    proj = einops.einsum(activation, direction.view(-1, 1), '... d_act, d_act single -> ... single') * direction
+    return activation - proj
 
 
-# for idx in range(len(model.model.layers)):
-#     model.model.layers[idx] = AblationDecoderLayer(model.model.layers[idx])
+class AblationDecoderLayer(nn.Module):
+    def __init__(self, original_layer):
+        super(AblationDecoderLayer, self).__init__()
+        self.original_layer = original_layer
+
+    def forward(self, *args, **kwargs):
+        hidden_states = args[0]
+        ablated = direction_ablation_hook(hidden_states, refusal_dir.to(hidden_states.device)).to(hidden_states.device)
+        args = (ablated,) + args[1:]
+        return self.original_layer.forward(*args, **kwargs)
+
+
+for idx in range(len(model.model.layers)):
+    model.model.layers[idx] = AblationDecoderLayer(model.model.layers[idx])
 
 # Test Inference
 # streamer = TextStreamer(tokenizer)
